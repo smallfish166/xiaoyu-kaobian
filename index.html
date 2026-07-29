@@ -54,7 +54,7 @@
     .kb-children.hidden{display:none;}
     .scratchpad{border:1px solid var(--border); border-radius:12px; margin:12px 0; touch-action:none;}
     canvas{display:block; width:100%; background:white; border-radius:8px;}
-    #markCanvas{position:absolute; top:0; left:0; pointer-events:auto; z-index:10;}
+    #markCanvas{position:absolute; top:0; left:0; pointer-events:auto; z-index:10; background:transparent!important;}
   </style>
 </head>
 <body>
@@ -75,7 +75,7 @@
 
 <script>
 // ==================== 数据管理 ====================
-const STORAGE_KEY = 'xiaoyu_complete_v2';
+const STORAGE_KEY = 'xiaoyu_complete_v3';
 let appData = {
   questions: [],
   wrongIds: [],
@@ -340,7 +340,7 @@ function initScratchCanvas(){
 window.toggleScratch = function(){ scratchVisible = !scratchVisible; renderPV(); };
 window.clearScratch = function(){ const canvas = document.getElementById('scratchCanvas'); if(canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); };
 
-// 标记笔（在题目卡片上直接圈画）
+// 标记笔（透明背景，直接在题目上圈画）
 function toggleMarkMode(){
   markMode = !markMode;
   renderPV();
@@ -356,6 +356,7 @@ function enableMarkMode(){
   canvas.style.top = '0'; canvas.style.left = '0';
   canvas.style.width = '100%'; canvas.style.height = '100%';
   canvas.style.pointerEvents = 'auto';
+  canvas.style.background = 'transparent';
   card.style.position = 'relative';
   card.appendChild(canvas);
   const rect = card.getBoundingClientRect();
