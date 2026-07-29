@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>小鱼的考公考编工作台</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIuWwj+m8vOeahOiAg+WFrOiAg+e8luW3peS9nOWPsCIsCiAgInNob3J0X25hbWUiOiAi5bCP6by85bel5L2c5Y+wIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmZmY3ZjAiLAogICJ0aGVtZV9jb2xvciI6ICIjZmY3ZjUwIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3RleHQgeT0nLjllbScgZm9udC1zaXplPSc5MCclM0Xwn5CwJTNDL3RleHQlM0UlM0Mvc3ZnJTNFIiwKICAgICAgInNpemVzIjogIjEwMHgxMDAiLAogICAgICAidHlwZSI6ICJpbWFnZS9zdmcreG1sIgogICAgfQogIF0KfQ==">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="小鱼工作台">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐠</text></svg>">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#FFF7F0; --surface:#FFFFFF; --text:#3D2C2C; --text-secondary:#8B7B7B;
+      --border:#F0D5C0; --primary:#FF7F50; --primary-light:#FFF0E8; --primary-dark:#E5693C;
+      --accent:#FFAB76; --success:#6BBF6B; --danger:#F27E7E; --radius:20px;
+      --shadow:0 4px 15px rgba(255,127,80,0.1); --font:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    }
+    body.dark {
+      --bg:#2B1E1E; --surface:#3A2A2A; --text:#F5E8E0; --text-secondary:#C0A8A0;
+      --border:#5A4040; --primary:#FF9F7C; --primary-light:#4A3030;
+    }
+    body {
+      background:var(--bg); color:var(--text); font-family:var(--font);
+      min-height:100vh; overflow-x:hidden; padding-bottom:70px;
+    }
+    .sidebar {
+      position:fixed; top:0; left:0; width:280px; max-width:80vw; height:100%;
+      background:var(--surface); box-shadow:4px 0 20px rgba(0,0,0,0.1); z-index:1000;
+      transform:translateX(-100%); transition:transform 0.3s; overflow-y:auto;
+      padding:20px 12px; -webkit-overflow-scrolling:touch;
+    }
+    .sidebar.open { transform:translateX(0); }
+    .sidebar-header { font-weight:700; font-size:1.4rem; color:var(--primary-dark); text-align:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px dashed var(--accent); }
+    .nav-item { padding:12px 16px; margin-bottom:4px; border-radius:14px; font-weight:600; display:flex; align-items:center; gap:8px; cursor:pointer; }
+    .nav-item:active { background:var(--primary-light); }
+    .nav-item .arrow { margin-left:auto; transition:transform 0.2s; }
+    .nav-item.expanded .arrow { transform:rotate(90deg); }
+    .sub-nav { display:none; padding-left:16px; margin-bottom:6px; }
+    .sub-nav.show { display:block; }
+    .sub-item { padding:10px 14px; border-radius:12px; font-size:0.9rem; cursor:pointer; color:var(--text-secondary); margin-bottom:3px; }
+    .sub-item:active { background:var(--primary-light); color:var(--primary-dark); }
+    .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:999; opacity:0; visibility:hidden; transition:opacity 0.3s; }
+    .overlay.show { opacity:1; visibility:visible; }
+    .main-content { padding:16px 16px 80px; max-width:600px; margin:0 auto; min-height:100vh; }
+    .top-bar { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+    .menu-btn { background:var(--primary-light); border:none; width:44px; height:44px; border-radius:14px; font-size:1.4rem; display:flex; align-items:center; justify-content:center; color:var(--primary-dark); cursor:pointer; }
+    .card { background:var(--surface); border-radius:var(--radius); padding:18px; margin-bottom:16px; box-shadow:var(--shadow); border:1px solid var(--border); }
+    .card-row { display:flex; gap:12px; flex-wrap:wrap; }
+    .quick-card { flex:1; min-width:120px; background:var(--primary-light); border-radius:18px; padding:16px; text-align:center; font-weight:600; color:var(--primary-dark); cursor:pointer; }
+    .quick-card:active { transform:scale(0.97); }
+    button.primary { background:var(--primary); color:white; border:none; padding:12px 20px; border-radius:14px; font-weight:600; cursor:pointer; width:100%; font-size:1rem; margin:8px 0; }
+    button.secondary { background:transparent; border:1px solid var(--border); padding:10px 16px; border-radius:12px; color:var(--text); cursor:pointer; font-size:0.9rem; }
+    .question-text { font-size:1.1rem; line-height:1.6; margin-bottom:16px; font-weight:500; }
+    .option { display:block; padding:14px; margin-bottom:8px; background:var(--bg); border:1px solid var(--border); border-radius:14px; cursor:pointer; }
+    .option.selected { border-color:var(--primary); background:var(--primary-light); }
+    .tag { background:var(--primary-light); color:var(--primary-dark); padding:4px 10px; border-radius:16px; font-size:0.8rem; font-weight:600; }
+    .timer { font-size:1.3rem; font-weight:700; color:var(--danger); text-align:center; margin:10px 0; }
+    .progress-bar { height:8px; background:var(--border); border-radius:8px; margin:10px 0; overflow:hidden; }
+    .progress-fill { height:100%; background:var(--accent); border-radius:8px; transition:width 0.3s; }
+    .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:8px 0 12px; z-index:900; transition:transform 0.3s; }
+    .bottom-nav.hidden { transform:translateY(100%); }
+    .nav-icon { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:0.75rem; color:var(--text-secondary); cursor:pointer; padding:4px 8px; }
+    .nav-icon.active { color:var(--primary-dark); font-weight:600; }
+    .answer-card { background:#FFF9F5; border-left:4px solid var(--accent); padding:12px; border-radius:12px; margin-top:12px; font-size:0.9rem; }
+    textarea,input,select { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:10px; font-family:inherit; margin:6px 0; font-size:0.9rem; }
+    .hidden { display:none !important; }
+    #loginContainer { position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:2000; display:flex; align-items:center; justify-content:center; }
+  </style>
+</head>
+<body>
+  <div id="loginContainer">
+    <div class="card" style="text-align:center; max-width:300px;">
+      <h2>🐠 小鱼工作台</h2>
+      <p>登录后可跨设备同步数据</p>
+      <button class="primary" id="loginBtn">🔐 使用 GitHub 登录</button>
+    </div>
+  </div>
+
+  <div class="sidebar" id="sidebar"><div class="sidebar-header">🐠 小鱼的工作台</div><div id="navTree"></div></div>
+  <div class="overlay" id="overlay"></div>
+
+  <div class="main-content" id="mainContent">
+    <div class="top-bar"><button class="menu-btn" id="menuBtn">📋</button><div class="greeting" id="greeting">☀️ 早上好，小鱼</div></div>
+    <div id="viewContainer"></div>
+  </div>
+
+  <div class="bottom-nav" id="bottomNav">
+    <div class="nav-icon active" data-tab="home"><span>🏠</span><span>首页</span></div>
+    <div class="nav-icon" data-tab="practice"><span>📝</span><span>刷题</span></div>
+    <div class="nav-icon" data-tab="exam"><span>⏱</span><span>模考</span></div>
+    <div class="nav-icon" data-tab="wrong"><span>❤️</span><span>错题</span></div>
+  </div>
+
+<script>
+  const SUPABASE_URL = 'https://jlvnvjmcisvqgongzpwf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsdm52am1jaXN2cWdvbmd6cHdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTYxNDAsImV4cCI6MjEwMDg5MjE0MH0.e_lI5Ffl0uT_-1Nh2ac4B9KUunwG6l7j1QSPsNGS5-c';
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let currentUser = null;
+  let appData = { questions:[], wrongIds:[], dailyLog:{}, progress:{}, knowledgeBase:{}, examHistory:[] };
+  const eduChapters = ['第1章 教育与教育学','第2章 教育与社会发展','第3章 教育与人的发展','第4章 教育目的','第5章 教师与学生','第6章 课程','第7章 教学（上）','第8章 教学（下）','第9章 德育','第10章 班级管理与教育研究'];
+  const psyChapters = ['第1章 教育心理学概述','第2章 心理发展与教育','第3章 学习理论','第4章 学习动机','第5章 学习迁移','第6章 知识与技能','第7章 问题解决与创造性','第8章 态度与品德','第9章 心理健康教育'];
+
+  function getDefaultQuestions() {
+    return [
+      { id:'q1', type:'single', module:'常识判断', chapter:'', question:'事业单位公开招聘程序的第一步是？', options:['A.制定招聘方案','B.发布公告','C.报名审查','D.考试考核'], answer:'A', analysis:'根据《事业单位人事管理条例》。' },
+      { id:'q2', type:'single', module:'言语理解', chapter:'', question:'填入横线最恰当的是：阅读经典可以____心灵，____智慧。', options:['A.净化 启迪','B.荡涤 启发','C.洗礼 开发','D.清洁 启示'], answer:'A', analysis:'“净化心灵、启迪智慧”为固定搭配。' },
+      { id:'q3', type:'single', module:'数量关系', chapter:'', question:'某班40人，语文及格35人，数学及格30人，两科不及格3人，两科都及格多少人？', options:['A.28','B.30','C.32','D.34'], answer:'A', analysis:'35+30-(40-3)=28。' },
+      { id:'q4', type:'single', module:'判断推理', chapter:'', question:'所有教师都是知识分子，有些知识分子是党员，所以？', options:['A.有些教师是党员','B.所有党员是知识分子','C.有些党员是教师','D.无法确定'], answer:'D', analysis:'三段论推理无法必然推出。' },
+      { id:'q5', type:'single', module:'资料分析', chapter:'', question:'2022年增长6%，2023年增长8%，则两年平均增长约为？', options:['A.6.99%','B.7.0%','C.7.1%','D.7.2%'], answer:'A', analysis:'年均增长率近似计算。' },
+      { id:'q6', type:'single', module:'教育学', chapter:'第4章 教育目的', question:'我国教育目的的理论基础是？', options:['A.素质教育理论','B.马克思主义人的全面发展学说','C.核心素养理论','D.建构主义'], answer:'B', analysis:'马克思主义关于人的全面发展学说是我国教育目的的理论基础。' },
+      { id:'q7', type:'multi', module:'教育学', chapter:'第6章 课程', question:'以下属于课程目标特点的有？', options:['A.整体性','B.阶段性','C.持续性','D.层次性'], answer:'ABCD' },
+      { id:'q8', type:'fill', module:'教育心理学', chapter:'第2章 心理发展与教育', question:'皮亚杰将儿童认知发展分为四个阶段，其中7-11岁处于______阶段。', answer:'具体运算' },
+      { id:'q9', type:'short', module:'教育学', chapter:'第7章 教学（上）', question:'简述启发性教学原则的基本要求。', answer:'①调动主动性②启发独立思考③动手解决④发扬教学民主' },
+      { id:'q10', type:'case', module:'教育心理学', chapter:'第4章 学习动机', question:'王老师发现小明因家庭原因学习动机减弱，请分析如何激发。', answer:'内部动机激发、外部奖励、增强归属感、提升自我效能感。' }
+    ];
+  }
+
+  // 云同步
+  async function syncFromCloud() {
+    if (!currentUser) return;
+    const { data } = await supabase.from('user_data').select('data').eq('user_id', currentUser.id).single();
+    if (data && data.data) {
+      try { appData = JSON.parse(data.data); } catch(e) {}
+      if (!appData.questions.length) appData.questions = getDefaultQuestions();
+    }
+  }
+  async function syncToCloud() {
+    if (!currentUser) return;
+    await supabase.from('user_data').upsert({ user_id: currentUser.id, data: JSON.stringify(appData) });
+  }
+
+  // 登录
+  async function checkUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) { currentUser = session.user; document.getElementById('loginContainer').style.display='none'; await syncFromCloud(); initApp(); }
+    else document.getElementById('loginContainer').style.display='flex';
+  }
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    await supabase.auth.signInWithOAuth({ provider:'github', options:{ redirectTo: window.location.origin + window.location.pathname } });
+  });
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (session) { currentUser = session.user; document.getElementById('loginContainer').style.display='none'; await syncFromCloud(); initApp(); }
+  });
+
+  // 导航
+  const navStructure = [
+    { label:'🧠 职测', children:[
+      { label:'常识判断', module:'常识判断' },{ label:'言语理解', module:'言语理解' },{ label:'数量关系', module:'数量关系' },
+      { label:'判断推理', module:'判断推理' },{ label:'资料分析', module:'资料分析' },{ label:'✨ 自定义', module:'职测', chapter:'自定义' },
+      { label:'📒 知识库', module:'职测', isKnowledge:true }
+    ]},
+    { label:'📝 综应', children:[
+      { label:'教育案例分析', module:'综应', chapter:'教育案例分析' },{ label:'教育方案设计', module:'综应', chapter:'教育方案设计' },
+      { label:'教育写作', module:'综应', chapter:'教育写作' },{ label:'✨ 自定义', module:'综应', chapter:'自定义' },
+      { label:'📒 知识库', module:'综应', isKnowledge:true }
+    ]},
+    { label:'📄 申论', children:[
+      { label:'概括归纳题', module:'申论', chapter:'概括归纳题' },{ label:'提出对策题', module:'申论', chapter:'提出对策题' },
+      { label:'综合分析题', module:'申论', chapter:'综合分析题' },{ label:'大作文', module:'申论', chapter:'大作文' },
+      { label:'✨ 自定义', module:'申论', chapter:'自定义' },{ label:'📒 知识库', module:'申论', isKnowledge:true }
+    ]},
+    { label:'📖 教育学', children:[
+      { label:'📋 按题型', children:[{ label:'单选', module:'教育学', type:'single' },{ label:'多选', module:'教育学', type:'multi' },{ label:'填空', module:'教育学', type:'fill' },{ label:'简答', module:'教育学', type:'short' },{ label:'论述', module:'教育学', type:'short' },{ label:'案例分析', module:'教育学', type:'case' }] },
+      { label:'📂 按章节', children: eduChapters.map(ch=>({ label:ch, module:'教育学', chapter:ch })) },
+      { label:'✨ 自定义', module:'教育学', chapter:'自定义' },{ label:'📒 知识库', module:'教育学', isKnowledge:true }
+    ]},
+    { label:'🧪 教育心理学', children:[
+      { label:'📋 按题型', children:[{ label:'单选', module:'教育心理学', type:'single' },{ label:'多选', module:'教育心理学', type:'multi' },{ label:'填空', module:'教育心理学', type:'fill' },{ label:'简答', module:'教育心理学', type:'short' },{ label:'论述', module:'教育心理学', type:'short' },{ label:'案例分析', module:'教育心理学', type:'case' }] },
+      { label:'📂 按章节', children: psyChapters.map(ch=>({ label:ch, module:'教育心理学', chapter:ch })) },
+      { label:'✨ 自定义', module:'教育心理学', chapter:'自定义' },{ label:'📒 知识库', module:'教育心理学', isKnowledge:true }
+    ]},
+    { label:'📊 学习报告', isReport:true },{ label:'⚙️ 管理', isManage:true }
+  ];
+
+  function renderNavTree() {
+    let h='';
+    navStructure.forEach((item,idx)=>{
+      if(item.isReport) h+=`<div class="nav-item" onclick="showReport()">📊 学习报告</div>`;
+      else if(item.isManage) h+=`<div class="nav-item" onclick="showManage()">⚙️ 管理</div>`;
+      else {
+        h+=`<div class="nav-item" onclick="toggleNavItem(this,${idx})">${item.label} <span class="arrow">▶</span></div>`;
+        h+=`<div class="sub-nav" id="subNav${idx}">`;
+        item.children?.forEach((child,childIdx)=>{
+          if(child.children){
+            h+=`<div class="sub-item" onclick="event.stopPropagation();toggleSubSub(event,${idx},${childIdx})">${child.label} <span style="margin-left:auto;">▶</span></div>`;
+            h+=`<div class="sub-nav" id="subSub${idx}_${childIdx}" style="padding-left:16px;">`;
+            child.children.forEach(g=>h+=`<div class="sub-item" onclick="selectFilter('${g.module||''}','${g.type||''}','${g.chapter||''}')">${g.label}</div>`);
+            h+=`</div>`;
+          }else if(child.isKnowledge) h+=`<div class="sub-item" onclick="openKnowledge('${child.module}')">📒 知识库</div>`;
+          else h+=`<div class="sub-item" onclick="selectFilter('${child.module||''}','${child.type||''}','${child.chapter||''}')">${child.label}</div>`;
+        });
+        h+=`</div>`;
+      }
+    });
+    document.getElementById('navTree').innerHTML=h;
+  }
+  window.toggleNavItem=(el,idx)=>{document.getElementById('subNav'+idx).classList.toggle('show');el.classList.toggle('expanded');};
+  window.toggleSubSub=(e,pi,ci)=>{e.stopPropagation();document.getElementById(`subSub${pi}_${ci}`).classList.toggle('show');e.currentTarget.classList.toggle('expanded');};
+
+  const sidebar=document.getElementById('sidebar'),overlay=document.getElementById('overlay');
+  document.getElementById('menuBtn').addEventListener('click',()=>{sidebar.classList.add('open');overlay.classList.add('show');});
+  overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('show');});
+
+  let mainTab='home',filter={},pQ=[],pI=0,ua={},showA={};
+  document.querySelectorAll('.nav-icon').forEach(i=>i.addEventListener('click',function(){
+    const t=this.dataset.tab;
+    if(t==='practice'&&!filter.module&&!filter.chapter){alert('请先从侧边栏选择刷题模块');return;}
+    mainTab=t;renderView();document.querySelectorAll('.nav-icon').forEach(i=>i.classList.remove('active'));this.classList.add('active');
+  }));
+  let lastY=0;window.addEventListener('scroll',()=>{const s=window.scrollY;document.getElementById('bottomNav').classList.toggle('hidden',s>lastY&&s>50);lastY=s;});
+
+  function renderView(){
+    const c=document.getElementById('viewContainer');
+    switch(mainTab){
+      case'home':renderHome();break;
+      case'practice':startPractice();break;
+      case'exam':renderExamSetup();break;
+      case'wrong':renderWrongBook();break;
+    }
+  }
+  function renderHome(){
+    const t=new Date().toISOString().slice(0,10),l=appData.dailyLog[t]||{count:0,correct:0},w=appData.wrongIds.length;
+    document.getElementById('viewContainer').innerHTML=`
+      <div class="card" style="background:linear-gradient(135deg,#FFAB76,#FF7F50);color:white;">
+        <div style="font-size:1.4rem;font-weight:700;">📅 今日打卡</div><div style="margin:10px 0;">已刷<strong>${l.count}</strong>题 | 正确<strong>${l.correct}</strong>题</div>
+        <div class="progress-bar" style="background:rgba(255,255,255,0.3);"><div class="progress-fill" style="width:${l.count?Math.min(100,l.correct/l.count*100):0}%;background:white;"></div></div><small>🔥 持续努力！</small></div>
+      <div class="card-row" style="margin-bottom:14px;"><div class="quick-card" onclick="mainTab='practice';renderView();">📝 继续刷题</div><div class="quick-card" onclick="mainTab='exam';renderView();">⏱ 模拟考试</div></div>
+      <div class="card-row"><div class="quick-card" onclick="mainTab='wrong';renderView();">❤️ 错题拯救(${w})</div><div class="quick-card" onclick="showReport()">📊 学习报告</div></div>
+      <div class="card-row" style="margin-top:14px;"><div class="quick-card" onclick="showManage()">⚙️ 题库管理</div></div>`;
+  }
+
+  function getFilteredQs(){
+    return appData.questions.filter(q=>{
+      if(filter.module&&q.module!==filter.module)return false;
+      if(filter.chapter){if(filter.chapter==='自定义')return !q.chapter;if(q.chapter!==filter.chapter)return false;}
+      if(filter.type&&q.type!==filter.type)return false;
+      return true;
+    }).sort((a,b)=>a.id.localeCompare(b.id));
+  }
+  function getPK(){let k=filter.module||'all';if(filter.chapter)k+='_'+filter.chapter;if(filter.type)k+='_'+filter.type;return k;}
+
+  function startPractice(mode='all',n=0){
+    const qs=getFilteredQs();if(!qs.length){document.getElementById('viewContainer').innerHTML='<div class="card">📭 暂无题目</div>';return;}
+    const pk=getPK();let s=appData.progress[pk]||0;if(s>=qs.length)s=0;
+    pQ=mode==='all'?qs:qs.slice(s,s+n);pI=0;ua={};showA={};renderPV();
+  }
+  function renderPV(){
+    const c=document.getElementById('viewContainer');if(!pQ.length){c.innerHTML='<div class="card">📭 没有可刷的题目</div>';return;}
+    if(pI>=pQ.length)pI=0;const q=pQ[pI],t=pQ.length,a=Object.keys(ua).length;
+    let h=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span class="tag">${q.module||''} ${q.chapter||''}</span><span>${pI+1}/${t}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(a/t)*100}%"></div></div><div class="question-text">${q.question}</div>`;
+    h+=renderQB(q);
+    h+=`<div style="margin-top:12px;">${ua[q.id]&&!showA[q.id]?`<button class="primary" onclick="checkAnswer('${q.id}')">✅ 核对答案</button>`:''}</div>`;
+    if(showA[q.id])h+=renderAC(q);
+    h+=`<div style="display:flex;gap:8px;margin-top:14px;"><button class="secondary" onclick="prevQ()">⬅ 上一题</button><button class="secondary" onclick="nextQ()">下一题 ➡</button></div></div>
+      <div class="card"><div style="display:flex;gap:8px;justify-content:center;"><button class="secondary" onclick="startPractice('all')">📚 全部题目</button><button class="secondary" onclick="customNum()">🔢 自定义数量</button></div></div>`;
+    c.innerHTML=h;
+  }
+  function renderQB(q){
+    const u=ua[q.id]||'';
+    switch(q.type){
+      case'single':case'multi':return q.options.map(o=>{const s=q.type==='single'?u===o.charAt(0):u.includes(o.charAt(0));return`<div class="option ${s?'selected':''}" onclick="selectOpt('${q.id}','${o.charAt(0)}')">${o}</div>`;}).join('');
+      default:return`<textarea class="answer-input" placeholder="输入答案" onchange="ua['${q.id}']=this.value">${u}</textarea>`;
+    }
+  }
+  function renderAC(q){
+    const u=ua[q.id]||'';let c=false;
+    if(q.type==='single')c=u===q.answer;else if(q.type==='multi')c=u.split('').sort().join('')===q.answer.split('').sort().join('');else c=u.trim()===q.answer.trim();
+    return`<div class="answer-card"><div style="font-weight:700;color:${c?'var(--success)':'var(--danger)'};">${c?'✅ 正确':'❌ 错误'}</div><div style="margin-top:6px;"><strong>正确答案：</strong>${q.answer}</div>${u?`<div><strong>你的答案：</strong>${u}</div>`:''}${q.analysis?`<div style="margin-top:4px;color:var(--text-secondary);"><strong>解析：</strong>${q.analysis}</div>`:''}</div>`;
+  }
+  window.selectOpt=function(id,ch){const q=pQ.find(q=>q.id===id);if(!q)return;if(q.type==='single')ua[id]=ch;else{let c=ua[id]||'';c=c.includes(ch)?c.replace(ch,''):c+ch;ua[id]=c;}renderPV();};
+  window.checkAnswer=function(id){showA[id]=true;const q=pQ.find(q=>q.id===id),u=ua[id]||'';let c=false;if(q.type==='single')c=u===q.answer;else if(q.type==='multi')c=u.split('').sort().join('')===q.answer.split('').sort().join('');else c=u.trim()===q.answer.trim();if(!c&&!appData.wrongIds.includes(id)){appData.wrongIds.push(id);syncToCloud();}recordAttempt(c);renderPV();};
+  function recordAttempt(c){const t=new Date().toISOString().slice(0,10);if(!appData.dailyLog[t])appData.dailyLog[t]={count:0,correct:0};appData.dailyLog[t].count++;if(c)appData.dailyLog[t].correct++;syncToCloud();}
+  window.prevQ=()=>{if(pI>0)pI--;renderPV();};
+  window.nextQ=()=>{if(pI<pQ.length-1){pI++;appData.progress[getPK()]=pI;syncToCloud();}renderPV();};
+  window.customNum=()=>{const n=prompt('请输入题目数量：');if(n&&!isNaN(n)&&parseInt(n)>0)startPractice('custom',parseInt(n));};
+  window.selectFilter=function(m,ty,ch){filter={module:m,type:ty,chapter:ch};sidebar.classList.remove('open');overlay.classList.remove('show');mainTab='practice';renderView();};
+
+  // 模拟考试
+  let ex={running:false,qs:[],ans:{},sec:0,timer:null};
+  function renderExamSetup(){if(ex.running){renderExamRun();return;}document.getElementById('viewContainer').innerHTML=`<div class="card"><h3>⏱ 模拟考试</h3><label>题目数量</label><input id="ec" type="number" value="10" min="1"><label>时间(分钟)</label><input id="et" type="number" value="15" min="1"><button class="primary" onclick="startExam()">开始考试</button></div>`;}
+  window.startExam=function(){const n=parseInt(document.getElementById('ec').value)||10,m=parseInt(document.getElementById('et').value)||15;const p=[...appData.questions];ex.qs=[];for(let i=0;i<n&&p.length;i++)ex.qs.push(p.splice(Math.floor(Math.random()*p.length),1)[0]);ex.ans={};ex.sec=m*60;ex.running=true;renderExamRun();ex.timer=setInterval(()=>{ex.sec--;if(ex.sec<=0)submitExam();const t=document.getElementById('etimer');if(t)t.innerText=ft(ex.sec);},1000);};
+  function renderExamRun(){let h=`<div class="card"><div class="timer" id="etimer">${ft(ex.sec)}</div>`;ex.qs.forEach((q,i)=>{h+=`<div style="margin-bottom:16px;"><strong>${i+1}. ${q.question}</strong>`;if(q.type==='single'||q.type==='multi')h+=q.options.map(o=>{const s=ex.ans[q.id]&&(q.type==='single'?ex.ans[q.id]===o.charAt(0):ex.ans[q.id].includes(o.charAt(0)));return`<div class="option ${s?'selected':''}" onclick="examSel('${q.id}','${o.charAt(0)}')">${o}</div>`;}).join('');else h+=`<input class="answer-input" placeholder="答案" onchange="ex.ans['${q.id}']=this.value">`;h+=`</div>`;});h+=`<button class="primary" onclick="submitExam()">交卷</button></div>`;document.getElementById('viewContainer').innerHTML=h;}
+  window.examSel=function(id,ch){const q=ex.qs.find(q=>q.id===id);if(q.type==='single')ex.ans[id]=ch;else{let c=ex.ans[id]||'';c=c.includes(ch)?c.replace(ch,''):c+ch;ex.ans[id]=c;}renderExamRun();};
+  window.submitExam=function(){clearInterval(ex.timer);let s=0;ex.qs.forEach(q=>{const u=ex.ans[q.id]||'';let c=false;if(q.type==='single')c=u===q.answer;else if(q.type==='multi')c=u.split('').sort().join('')===q.answer.split('').sort().join('');else c=u.trim()===q.answer.trim();if(c)s++;else if(!appData.wrongIds.includes(q.id))appData.wrongIds.push(q.id);recordAttempt(c);});appData.examHistory.push({date:new Date().toISOString(),score:s,total:ex.qs.length,time:Math.round((Date.now()-ex.startTime)/1000)});ex.running=false;syncToCloud();alert(`🎯 得分 ${s}/${ex.qs.length}`);mainTab='home';renderView();};
+  function ft(s){const m=Math.floor(s/60),sec=s%60;return`${m}:${sec<10?'0':''}${sec}`;}
+
+  // 错题本
+  function renderWrongBook(){const qs=appData.questions.filter(q=>appData.wrongIds.includes(q.id));if(!qs.length){document.getElementById('viewContainer').innerHTML='<div class="card">🎉 没有错题！</div>';return;}let h='<div class="card"><h3>❤️ 错题本</h3>';qs.forEach(q=>h+=`<div style="display:flex;justify-content:space-between;margin:8px 0;"><span>${q.question.substring(0,20)}...</span><button class="secondary" onclick="redoQ('${q.id}')">重做</button></div>`);h+=`<button class="primary" onclick="wrongExam()">🔄 错题重考</button></div>`;document.getElementById('viewContainer').innerHTML=h;}
+  window.redoQ=function(id){pQ=[appData.questions.find(q=>q.id===id)];pI=0;ua={};showA={};mainTab='practice';renderView();};
+  window.wrongExam=function(){const qs=appData.questions.filter(q=>appData.wrongIds.includes(q.id));if(!qs.length)return alert('没有错题');ex={running:true,qs:qs,ans:{},sec:qs.length*60,startTime:Date.now()};mainTab='exam';renderExamRun();ex.timer=setInterval(()=>{ex.sec--;if(ex.sec<=0)submitExam();document.getElementById('etimer').innerText=ft(ex.sec);},1000);};
+
+  // 报告
+  window.showReport=()=>{sidebar.classList.remove('open');overlay.classList.remove('show');const t=Object.values(appData.dailyLog).reduce((s,d)=>s+d.count,0),c=Object.values(appData.dailyLog).reduce((s,d)=>s+d.correct,0),a=t?Math.round(c/t*100):0;let h=`<div class="card"><h3>📊 学习报告</h3><div>总刷题：<strong>${t}</strong></div><div>正确率：<strong>${a}%</strong></div></div>`;document.getElementById('viewContainer').innerHTML=h;};
+
+  // 管理
+  window.showManage=()=>{sidebar.classList.remove('open');overlay.classList.remove('show');document.getElementById('viewContainer').innerHTML=`<div class="card"><h3>⚙️ 题库管理</h3><button class="primary" onclick="exportData()">💾 导出备份</button></div>`;};
+  window.exportData=function(){const b=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='xiaoyu_backup.json';a.click();};
+
+  // 知识库
+  window.openKnowledge=function(m){sidebar.classList.remove('open');overlay.classList.remove('show');if(!appData.knowledgeBase[m])appData.knowledgeBase[m]=[];let h=`<div class="card"><h3>📒 ${m} 知识库</h3>`;appData.knowledgeBase[m].forEach((e,i)=>{if(e.type==='link')h+=`<div style="margin:8px 0;">📎 <a href="${e.url}" target="_blank">${e.title}</a> <button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;else h+=`<div style="margin:8px 0;"><strong>📝 ${e.title}</strong><p>${e.content}</p><button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;});h+=`<hr><input id="ktitle" placeholder="标题"><select id="ktype" onchange="document.getElementById('klink').style.display=this.value==='link'?'block':'none';document.getElementById('kcont').style.display=this.value==='note'?'block':'none';"><option value="link">📎 超链接</option><option value="note">📝 笔记</option></select><input id="klink" placeholder="粘贴链接"><textarea id="kcont" placeholder="笔记内容" style="display:none;" rows="4"></textarea><button class="primary" onclick="addK('${m}')">添加</button></div>`;document.getElementById('viewContainer').innerHTML=h;};
+  window.addK=function(m){const t=document.getElementById('ktype').value,ti=document.getElementById('ktitle').value||'未命名',e={type:t,title:ti};if(t==='link'){e.url=document.getElementById('klink').value;if(!e.url)return alert('请输入链接');}else{e.content=document.getElementById('kcont').value;if(!e.content)return alert('请输入内容');}appData.knowledgeBase[m].push(e);syncToCloud();openKnowledge(m);};
+  window.delK=function(m,i){appData.knowledgeBase[m].splice(i,1);syncToCloud();openKnowledge(m);};
+
+  // 初始化
+  function initApp(){
+    if(!appData.questions.length) appData.questions=getDefaultQuestions();
+    if(!appData.knowledgeBase) appData.knowledgeBase={};
+    if(!appData.progress) appData.progress={};
+    renderNavTree();mainTab='home';renderView();
+    const h=new Date().getHours();document.getElementById('greeting').innerText=(h<12?'☀️ 早上好':h<18?'🌤 下午好':'🌙 晚上好')+'，小鱼';
+  }
+  checkUser();
+
+  // PWA
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('data:application/javascript,'+encodeURIComponent(`self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`));
+  }
+</script>
+</body>
+</html>
