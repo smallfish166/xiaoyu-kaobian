@@ -157,7 +157,12 @@
     else document.getElementById('loginContainer').style.display='flex';
   }
   document.getElementById('loginBtn').addEventListener('click', async () => {
-    await supabase.auth.signInWithOAuth({ provider:'github', options:{ redirectTo: window.location.origin + window.location.pathname } });
+    await supabase.auth.signInWithOAuth({
+  provider: 'github',
+  options: {
+    redirectTo: 'https://smallfish166.github.io/xiaoyu-kaobian'
+  }
+});
   });
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (session) { currentUser = session.user; document.getElementById('loginContainer').style.display='none'; await syncFromCloud(); initApp(); }
