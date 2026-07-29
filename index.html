@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>小鱼的考公考编工作台</title>
-
+  
   <!-- PWA Manifest -->
   <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIuWwj+m8vOeahOiAg+WFrOiAg+e8luW3peS9nOWPsCIsCiAgInNob3J0X25hbWUiOiAi5bCP6by85bel5L2c5Y+wIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNmZmY3ZjAiLAogICJ0aGVtZV9jb2xvciI6ICIjZmY3ZjUwIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3RleHQgeT0nLjllbScgZm9udC1zaXplPSc5MCclM0Xwn5CwJTNDL3RleHQlM0UlM0Mvc3ZnJTNFIiwKICAgICAgInNpemVzIjogIjEwMHgxMDAiLAogICAgICAidHlwZSI6ICJpbWFnZS9zdmcreG1sIgogICAgfQogIF0KfQ==">
-
+  
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="小鱼工作台">
@@ -105,7 +105,17 @@
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
-  let appData = { questions:[], wrongIds:[], dailyLog:{}, progress:{}, knowledgeBase:{}, examHistory:[] };
+  let appData = {
+    questions: [],
+    wrongIds: [],
+    dailyLog: {},
+    progress: {},
+    knowledgeBase: {},
+    examHistory: [],
+    // 新增：自定义分类存储 { '职测': ['自定义1','自定义2'], '教育学': [...] }
+    customCategories: {}
+  };
+
   const eduChapters = ['第1章 教育与教育学','第2章 教育与社会发展','第3章 教育与人的发展','第4章 教育目的','第5章 教师与学生','第6章 课程','第7章 教学（上）','第8章 教学（下）','第9章 德育','第10章 班级管理与教育研究'];
   const psyChapters = ['第1章 教育心理学概述','第2章 心理发展与教育','第3章 学习理论','第4章 学习动机','第5章 学习迁移','第6章 知识与技能','第7章 问题解决与创造性','第8章 态度与品德','第9章 心理健康教育'];
 
@@ -131,6 +141,7 @@
     if (data && data.data) {
       try { appData = JSON.parse(data.data); } catch(e) {}
       if (!appData.questions.length) appData.questions = getDefaultQuestions();
+      if (!appData.customCategories) appData.customCategories = {};
     }
   }
   async function syncToCloud() {
@@ -151,39 +162,48 @@
     if (session) { currentUser = session.user; document.getElementById('loginContainer').style.display='none'; await syncFromCloud(); initApp(); }
   });
 
-  // 导航
-  const navStructure = [
-    { label:'🧠 职测', children:[
-      { label:'常识判断', module:'常识判断' },{ label:'言语理解', module:'言语理解' },{ label:'数量关系', module:'数量关系' },
-      { label:'判断推理', module:'判断推理' },{ label:'资料分析', module:'资料分析' },{ label:'✨ 自定义', module:'职测', chapter:'自定义' },
-      { label:'📒 知识库', module:'职测', isKnowledge:true }
-    ]},
-    { label:'📝 综应', children:[
-      { label:'教育案例分析', module:'综应', chapter:'教育案例分析' },{ label:'教育方案设计', module:'综应', chapter:'教育方案设计' },
-      { label:'教育写作', module:'综应', chapter:'教育写作' },{ label:'✨ 自定义', module:'综应', chapter:'自定义' },
-      { label:'📒 知识库', module:'综应', isKnowledge:true }
-    ]},
-    { label:'📄 申论', children:[
-      { label:'概括归纳题', module:'申论', chapter:'概括归纳题' },{ label:'提出对策题', module:'申论', chapter:'提出对策题' },
-      { label:'综合分析题', module:'申论', chapter:'综合分析题' },{ label:'大作文', module:'申论', chapter:'大作文' },
-      { label:'✨ 自定义', module:'申论', chapter:'自定义' },{ label:'📒 知识库', module:'申论', isKnowledge:true }
-    ]},
-    { label:'📖 教育学', children:[
-      { label:'📋 按题型', children:[{ label:'单选', module:'教育学', type:'single' },{ label:'多选', module:'教育学', type:'multi' },{ label:'填空', module:'教育学', type:'fill' },{ label:'简答', module:'教育学', type:'short' },{ label:'论述', module:'教育学', type:'short' },{ label:'案例分析', module:'教育学', type:'case' }] },
-      { label:'📂 按章节', children: eduChapters.map(ch=>({ label:ch, module:'教育学', chapter:ch })) },
-      { label:'✨ 自定义', module:'教育学', chapter:'自定义' },{ label:'📒 知识库', module:'教育学', isKnowledge:true }
-    ]},
-    { label:'🧪 教育心理学', children:[
-      { label:'📋 按题型', children:[{ label:'单选', module:'教育心理学', type:'single' },{ label:'多选', module:'教育心理学', type:'multi' },{ label:'填空', module:'教育心理学', type:'fill' },{ label:'简答', module:'教育心理学', type:'short' },{ label:'论述', module:'教育心理学', type:'short' },{ label:'案例分析', module:'教育心理学', type:'case' }] },
-      { label:'📂 按章节', children: psyChapters.map(ch=>({ label:ch, module:'教育心理学', chapter:ch })) },
-      { label:'✨ 自定义', module:'教育心理学', chapter:'自定义' },{ label:'📒 知识库', module:'教育心理学', isKnowledge:true }
-    ]},
-    { label:'📊 学习报告', isReport:true },{ label:'⚙️ 管理', isManage:true }
-  ];
+  // 导航（现在自定义分类是动态的）
+  function getNavStructure() {
+    const custom = appData.customCategories || {};
+    return [
+      { label:'🧠 职测', children:[
+        { label:'常识判断', module:'常识判断' },{ label:'言语理解', module:'言语理解' },{ label:'数量关系', module:'数量关系' },
+        { label:'判断推理', module:'判断推理' },{ label:'资料分析', module:'资料分析' },
+        { label:'✨ 自定义', isCustom:true, module:'职测' },
+        { label:'📒 知识库', module:'职测', isKnowledge:true }
+      ]},
+      { label:'📝 综应', children:[
+        { label:'教育案例分析', module:'综应', chapter:'教育案例分析' },{ label:'教育方案设计', module:'综应', chapter:'教育方案设计' },
+        { label:'教育写作', module:'综应', chapter:'教育写作' },
+        { label:'✨ 自定义', isCustom:true, module:'综应' },
+        { label:'📒 知识库', module:'综应', isKnowledge:true }
+      ]},
+      { label:'📄 申论', children:[
+        { label:'概括归纳题', module:'申论', chapter:'概括归纳题' },{ label:'提出对策题', module:'申论', chapter:'提出对策题' },
+        { label:'综合分析题', module:'申论', chapter:'综合分析题' },{ label:'大作文', module:'申论', chapter:'大作文' },
+        { label:'✨ 自定义', isCustom:true, module:'申论' },
+        { label:'📒 知识库', module:'申论', isKnowledge:true }
+      ]},
+      { label:'📖 教育学', children:[
+        { label:'📋 按题型', children:[{ label:'单选', module:'教育学', type:'single' },{ label:'多选', module:'教育学', type:'multi' },{ label:'填空', module:'教育学', type:'fill' },{ label:'简答', module:'教育学', type:'short' },{ label:'论述', module:'教育学', type:'short' },{ label:'案例分析', module:'教育学', type:'case' }] },
+        { label:'📂 按章节', children: eduChapters.map(ch=>({ label:ch, module:'教育学', chapter:ch })) },
+        { label:'✨ 自定义', isCustom:true, module:'教育学' },
+        { label:'📒 知识库', module:'教育学', isKnowledge:true }
+      ]},
+      { label:'🧪 教育心理学', children:[
+        { label:'📋 按题型', children:[{ label:'单选', module:'教育心理学', type:'single' },{ label:'多选', module:'教育心理学', type:'multi' },{ label:'填空', module:'教育心理学', type:'fill' },{ label:'简答', module:'教育心理学', type:'short' },{ label:'论述', module:'教育心理学', type:'short' },{ label:'案例分析', module:'教育心理学', type:'case' }] },
+        { label:'📂 按章节', children: psyChapters.map(ch=>({ label:ch, module:'教育心理学', chapter:ch })) },
+        { label:'✨ 自定义', isCustom:true, module:'教育心理学' },
+        { label:'📒 知识库', module:'教育心理学', isKnowledge:true }
+      ]},
+      { label:'📊 学习报告', isReport:true },{ label:'⚙️ 管理', isManage:true }
+    ];
+  }
 
   function renderNavTree() {
+    const nav = getNavStructure();
     let h='';
-    navStructure.forEach((item,idx)=>{
+    nav.forEach((item,idx)=>{
       if(item.isReport) h+=`<div class="nav-item" onclick="showReport()">📊 学习报告</div>`;
       else if(item.isManage) h+=`<div class="nav-item" onclick="showManage()">⚙️ 管理</div>`;
       else {
@@ -194,6 +214,15 @@
             h+=`<div class="sub-item" onclick="event.stopPropagation();toggleSubSub(event,${idx},${childIdx})">${child.label} <span style="margin-left:auto;">▶</span></div>`;
             h+=`<div class="sub-nav" id="subSub${idx}_${childIdx}" style="padding-left:16px;">`;
             child.children.forEach(g=>h+=`<div class="sub-item" onclick="selectFilter('${g.module||''}','${g.type||''}','${g.chapter||''}')">${g.label}</div>`);
+            h+=`</div>`;
+          }else if(child.isCustom){
+            // 渲染自定义分类区域
+            const mod = child.module;
+            const cats = appData.customCategories[mod] || [];
+            h+=`<div class="sub-item" onclick="event.stopPropagation();toggleSubSub(event,${idx},${childIdx})">✨ 自定义 <span style="margin-left:auto;">▶</span></div>`;
+            h+=`<div class="sub-nav" id="subSub${idx}_${childIdx}" style="padding-left:16px;">`;
+            cats.forEach(cat => h+=`<div class="sub-item" onclick="selectFilter('${mod}','','${cat}')">📌 ${cat}</div>`);
+            h+=`<div class="sub-item" onclick="manageCustom('${mod}')" style="color:var(--primary-dark);font-weight:600;">⚙️ 管理自定义</div>`;
             h+=`</div>`;
           }else if(child.isKnowledge) h+=`<div class="sub-item" onclick="openKnowledge('${child.module}')">📒 知识库</div>`;
           else h+=`<div class="sub-item" onclick="selectFilter('${child.module||''}','${child.type||''}','${child.chapter||''}')">${child.label}</div>`;
@@ -206,9 +235,57 @@
   window.toggleNavItem=(el,idx)=>{document.getElementById('subNav'+idx).classList.toggle('show');el.classList.toggle('expanded');};
   window.toggleSubSub=(e,pi,ci)=>{e.stopPropagation();document.getElementById(`subSub${pi}_${ci}`).classList.toggle('show');e.currentTarget.classList.toggle('expanded');};
 
+  // 管理自定义分类
+  window.manageCustom = function(module) {
+    const cats = appData.customCategories[module] || [];
+    let h = `<div class="card"><h3>✨ ${module} - 自定义分类</h3>`;
+    if(cats.length === 0) h += '<p>暂无自定义分类</p>';
+    cats.forEach((cat, i) => {
+      h += `<div style="display:flex; justify-content:space-between; margin:8px 0;">
+        <span>📌 ${cat}</span>
+        <span>
+          <button class="secondary" onclick="renameCustom('${module}', ${i})">重命名</button>
+          <button class="secondary" onclick="deleteCustom('${module}', ${i})">删除</button>
+        </span>
+      </div>`;
+    });
+    h += `<hr><input id="newCatName" placeholder="新分类名称"><button class="primary" onclick="addCustom('${module}')">添加</button>`;
+    h += `<button class="secondary" onclick="closeSidebar();switchMainTab('home');" style="margin-top:8px;">返回首页</button></div>`;
+    document.getElementById('viewContainer').innerHTML = h;
+    closeSidebar();
+  };
+  window.addCustom = function(mod) {
+    const name = document.getElementById('newCatName').value.trim();
+    if(!name) return alert('请输入名称');
+    if(!appData.customCategories[mod]) appData.customCategories[mod] = [];
+    if(appData.customCategories[mod].includes(name)) return alert('已存在同名分类');
+    appData.customCategories[mod].push(name);
+    syncToCloud();
+    renderNavTree();
+    manageCustom(mod);
+  };
+  window.renameCustom = function(mod, idx) {
+    const newName = prompt('重命名为：', appData.customCategories[mod][idx]);
+    if(newName && newName.trim()) {
+      appData.customCategories[mod][idx] = newName.trim();
+      syncToCloud();
+      renderNavTree();
+      manageCustom(mod);
+    }
+  };
+  window.deleteCustom = function(mod, idx) {
+    if(confirm('确定删除这个分类？')) {
+      appData.customCategories[mod].splice(idx, 1);
+      syncToCloud();
+      renderNavTree();
+      manageCustom(mod);
+    }
+  };
+
   const sidebar=document.getElementById('sidebar'),overlay=document.getElementById('overlay');
   document.getElementById('menuBtn').addEventListener('click',()=>{sidebar.classList.add('open');overlay.classList.add('show');});
   overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('show');});
+  function closeSidebar(){sidebar.classList.remove('open');overlay.classList.remove('show');}
 
   let mainTab='home',filter={},pQ=[],pI=0,ua={},showA={};
   document.querySelectorAll('.nav-icon').forEach(i=>i.addEventListener('click',function(){
@@ -218,6 +295,7 @@
   }));
   let lastY=0;window.addEventListener('scroll',()=>{const s=window.scrollY;document.getElementById('bottomNav').classList.toggle('hidden',s>lastY&&s>50);lastY=s;});
 
+  function switchMainTab(t){mainTab=t;renderView();}
   function renderView(){
     const c=document.getElementById('viewContainer');
     switch(mainTab){
@@ -233,15 +311,18 @@
       <div class="card" style="background:linear-gradient(135deg,#FFAB76,#FF7F50);color:white;">
         <div style="font-size:1.4rem;font-weight:700;">📅 今日打卡</div><div style="margin:10px 0;">已刷<strong>${l.count}</strong>题 | 正确<strong>${l.correct}</strong>题</div>
         <div class="progress-bar" style="background:rgba(255,255,255,0.3);"><div class="progress-fill" style="width:${l.count?Math.min(100,l.correct/l.count*100):0}%;background:white;"></div></div><small>🔥 持续努力！</small></div>
-      <div class="card-row" style="margin-bottom:14px;"><div class="quick-card" onclick="mainTab='practice';renderView();">📝 继续刷题</div><div class="quick-card" onclick="mainTab='exam';renderView();">⏱ 模拟考试</div></div>
-      <div class="card-row"><div class="quick-card" onclick="mainTab='wrong';renderView();">❤️ 错题拯救(${w})</div><div class="quick-card" onclick="showReport()">📊 学习报告</div></div>
+      <div class="card-row" style="margin-bottom:14px;"><div class="quick-card" onclick="switchMainTab('practice')">📝 继续刷题</div><div class="quick-card" onclick="switchMainTab('exam')">⏱ 模拟考试</div></div>
+      <div class="card-row"><div class="quick-card" onclick="switchMainTab('wrong')">❤️ 错题拯救(${w})</div><div class="quick-card" onclick="showReport()">📊 学习报告</div></div>
       <div class="card-row" style="margin-top:14px;"><div class="quick-card" onclick="showManage()">⚙️ 题库管理</div></div>`;
   }
 
   function getFilteredQs(){
     return appData.questions.filter(q=>{
       if(filter.module&&q.module!==filter.module)return false;
-      if(filter.chapter){if(filter.chapter==='自定义')return !q.chapter;if(q.chapter!==filter.chapter)return false;}
+      if(filter.chapter){
+        if(filter.chapter==='自定义') return !q.chapter || q.chapter === '';
+        if(q.chapter!==filter.chapter)return false;
+      }
       if(filter.type&&q.type!==filter.type)return false;
       return true;
     }).sort((a,b)=>a.id.localeCompare(b.id));
@@ -283,7 +364,7 @@
   window.prevQ=()=>{if(pI>0)pI--;renderPV();};
   window.nextQ=()=>{if(pI<pQ.length-1){pI++;appData.progress[getPK()]=pI;syncToCloud();}renderPV();};
   window.customNum=()=>{const n=prompt('请输入题目数量：');if(n&&!isNaN(n)&&parseInt(n)>0)startPractice('custom',parseInt(n));};
-  window.selectFilter=function(m,ty,ch){filter={module:m,type:ty,chapter:ch};sidebar.classList.remove('open');overlay.classList.remove('show');mainTab='practice';renderView();};
+  window.selectFilter=function(m,ty,ch){filter={module:m,type:ty,chapter:ch};closeSidebar();switchMainTab('practice');};
 
   // 模拟考试
   let ex={running:false,qs:[],ans:{},sec:0,timer:null};
@@ -291,23 +372,23 @@
   window.startExam=function(){const n=parseInt(document.getElementById('ec').value)||10,m=parseInt(document.getElementById('et').value)||15;const p=[...appData.questions];ex.qs=[];for(let i=0;i<n&&p.length;i++)ex.qs.push(p.splice(Math.floor(Math.random()*p.length),1)[0]);ex.ans={};ex.sec=m*60;ex.running=true;renderExamRun();ex.timer=setInterval(()=>{ex.sec--;if(ex.sec<=0)submitExam();const t=document.getElementById('etimer');if(t)t.innerText=ft(ex.sec);},1000);};
   function renderExamRun(){let h=`<div class="card"><div class="timer" id="etimer">${ft(ex.sec)}</div>`;ex.qs.forEach((q,i)=>{h+=`<div style="margin-bottom:16px;"><strong>${i+1}. ${q.question}</strong>`;if(q.type==='single'||q.type==='multi')h+=q.options.map(o=>{const s=ex.ans[q.id]&&(q.type==='single'?ex.ans[q.id]===o.charAt(0):ex.ans[q.id].includes(o.charAt(0)));return`<div class="option ${s?'selected':''}" onclick="examSel('${q.id}','${o.charAt(0)}')">${o}</div>`;}).join('');else h+=`<input class="answer-input" placeholder="答案" onchange="ex.ans['${q.id}']=this.value">`;h+=`</div>`;});h+=`<button class="primary" onclick="submitExam()">交卷</button></div>`;document.getElementById('viewContainer').innerHTML=h;}
   window.examSel=function(id,ch){const q=ex.qs.find(q=>q.id===id);if(q.type==='single')ex.ans[id]=ch;else{let c=ex.ans[id]||'';c=c.includes(ch)?c.replace(ch,''):c+ch;ex.ans[id]=c;}renderExamRun();};
-  window.submitExam=function(){clearInterval(ex.timer);let s=0;ex.qs.forEach(q=>{const u=ex.ans[q.id]||'';let c=false;if(q.type==='single')c=u===q.answer;else if(q.type==='multi')c=u.split('').sort().join('')===q.answer.split('').sort().join('');else c=u.trim()===q.answer.trim();if(c)s++;else if(!appData.wrongIds.includes(q.id))appData.wrongIds.push(q.id);recordAttempt(c);});appData.examHistory.push({date:new Date().toISOString(),score:s,total:ex.qs.length,time:Math.round((Date.now()-ex.startTime)/1000)});ex.running=false;syncToCloud();alert(`🎯 得分 ${s}/${ex.qs.length}`);mainTab='home';renderView();};
+  window.submitExam=function(){clearInterval(ex.timer);let s=0;ex.qs.forEach(q=>{const u=ex.ans[q.id]||'';let c=false;if(q.type==='single')c=u===q.answer;else if(q.type==='multi')c=u.split('').sort().join('')===q.answer.split('').sort().join('');else c=u.trim()===q.answer.trim();if(c)s++;else if(!appData.wrongIds.includes(q.id))appData.wrongIds.push(q.id);recordAttempt(c);});appData.examHistory.push({date:new Date().toISOString(),score:s,total:ex.qs.length,time:Math.round((Date.now()-ex.startTime)/1000)});ex.running=false;syncToCloud();alert(`🎯 得分 ${s}/${ex.qs.length}`);switchMainTab('home');};
   function ft(s){const m=Math.floor(s/60),sec=s%60;return`${m}:${sec<10?'0':''}${sec}`;}
 
   // 错题本
   function renderWrongBook(){const qs=appData.questions.filter(q=>appData.wrongIds.includes(q.id));if(!qs.length){document.getElementById('viewContainer').innerHTML='<div class="card">🎉 没有错题！</div>';return;}let h='<div class="card"><h3>❤️ 错题本</h3>';qs.forEach(q=>h+=`<div style="display:flex;justify-content:space-between;margin:8px 0;"><span>${q.question.substring(0,20)}...</span><button class="secondary" onclick="redoQ('${q.id}')">重做</button></div>`);h+=`<button class="primary" onclick="wrongExam()">🔄 错题重考</button></div>`;document.getElementById('viewContainer').innerHTML=h;}
-  window.redoQ=function(id){pQ=[appData.questions.find(q=>q.id===id)];pI=0;ua={};showA={};mainTab='practice';renderView();};
-  window.wrongExam=function(){const qs=appData.questions.filter(q=>appData.wrongIds.includes(q.id));if(!qs.length)return alert('没有错题');ex={running:true,qs:qs,ans:{},sec:qs.length*60,startTime:Date.now()};mainTab='exam';renderExamRun();ex.timer=setInterval(()=>{ex.sec--;if(ex.sec<=0)submitExam();document.getElementById('etimer').innerText=ft(ex.sec);},1000);};
+  window.redoQ=function(id){pQ=[appData.questions.find(q=>q.id===id)];pI=0;ua={};showA={};switchMainTab('practice');};
+  window.wrongExam=function(){const qs=appData.questions.filter(q=>appData.wrongIds.includes(q.id));if(!qs.length)return alert('没有错题');ex={running:true,qs:qs,ans:{},sec:qs.length*60,startTime:Date.now()};switchMainTab('exam');renderExamRun();ex.timer=setInterval(()=>{ex.sec--;if(ex.sec<=0)submitExam();document.getElementById('etimer').innerText=ft(ex.sec);},1000);};
 
   // 报告
-  window.showReport=()=>{sidebar.classList.remove('open');overlay.classList.remove('show');const t=Object.values(appData.dailyLog).reduce((s,d)=>s+d.count,0),c=Object.values(appData.dailyLog).reduce((s,d)=>s+d.correct,0),a=t?Math.round(c/t*100):0;let h=`<div class="card"><h3>📊 学习报告</h3><div>总刷题：<strong>${t}</strong></div><div>正确率：<strong>${a}%</strong></div></div>`;document.getElementById('viewContainer').innerHTML=h;};
+  window.showReport=()=>{closeSidebar();const t=Object.values(appData.dailyLog).reduce((s,d)=>s+d.count,0),c=Object.values(appData.dailyLog).reduce((s,d)=>s+d.correct,0),a=t?Math.round(c/t*100):0;let h=`<div class="card"><h3>📊 学习报告</h3><div>总刷题：<strong>${t}</strong></div><div>正确率：<strong>${a}%</strong></div></div>`;document.getElementById('viewContainer').innerHTML=h;};
 
   // 管理
-  window.showManage=()=>{sidebar.classList.remove('open');overlay.classList.remove('show');document.getElementById('viewContainer').innerHTML=`<div class="card"><h3>⚙️ 题库管理</h3><button class="primary" onclick="exportData()">💾 导出备份</button></div>`;};
+  window.showManage=()=>{closeSidebar();document.getElementById('viewContainer').innerHTML=`<div class="card"><h3>⚙️ 题库管理</h3><button class="primary" onclick="exportData()">💾 导出备份</button></div>`;};
   window.exportData=function(){const b=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='xiaoyu_backup.json';a.click();};
 
   // 知识库
-  window.openKnowledge=function(m){sidebar.classList.remove('open');overlay.classList.remove('show');if(!appData.knowledgeBase[m])appData.knowledgeBase[m]=[];let h=`<div class="card"><h3>📒 ${m} 知识库</h3>`;appData.knowledgeBase[m].forEach((e,i)=>{if(e.type==='link')h+=`<div style="margin:8px 0;">📎 <a href="${e.url}" target="_blank">${e.title}</a> <button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;else h+=`<div style="margin:8px 0;"><strong>📝 ${e.title}</strong><p>${e.content}</p><button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;});h+=`<hr><input id="ktitle" placeholder="标题"><select id="ktype" onchange="document.getElementById('klink').style.display=this.value==='link'?'block':'none';document.getElementById('kcont').style.display=this.value==='note'?'block':'none';"><option value="link">📎 超链接</option><option value="note">📝 笔记</option></select><input id="klink" placeholder="粘贴链接"><textarea id="kcont" placeholder="笔记内容" style="display:none;" rows="4"></textarea><button class="primary" onclick="addK('${m}')">添加</button></div>`;document.getElementById('viewContainer').innerHTML=h;};
+  window.openKnowledge=function(m){closeSidebar();if(!appData.knowledgeBase[m])appData.knowledgeBase[m]=[];let h=`<div class="card"><h3>📒 ${m} 知识库</h3>`;appData.knowledgeBase[m].forEach((e,i)=>{if(e.type==='link')h+=`<div style="margin:8px 0;">📎 <a href="${e.url}" target="_blank">${e.title}</a> <button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;else h+=`<div style="margin:8px 0;"><strong>📝 ${e.title}</strong><p>${e.content}</p><button class="secondary" onclick="delK('${m}',${i})">删除</button></div>`;});h+=`<hr><input id="ktitle" placeholder="标题"><select id="ktype" onchange="document.getElementById('klink').style.display=this.value==='link'?'block':'none';document.getElementById('kcont').style.display=this.value==='note'?'block':'none';"><option value="link">📎 超链接</option><option value="note">📝 笔记</option></select><input id="klink" placeholder="粘贴链接"><textarea id="kcont" placeholder="笔记内容" style="display:none;" rows="4"></textarea><button class="primary" onclick="addK('${m}')">添加</button></div>`;document.getElementById('viewContainer').innerHTML=h;};
   window.addK=function(m){const t=document.getElementById('ktype').value,ti=document.getElementById('ktitle').value||'未命名',e={type:t,title:ti};if(t==='link'){e.url=document.getElementById('klink').value;if(!e.url)return alert('请输入链接');}else{e.content=document.getElementById('kcont').value;if(!e.content)return alert('请输入内容');}appData.knowledgeBase[m].push(e);syncToCloud();openKnowledge(m);};
   window.delK=function(m,i){appData.knowledgeBase[m].splice(i,1);syncToCloud();openKnowledge(m);};
 
@@ -316,7 +397,8 @@
     if(!appData.questions.length) appData.questions=getDefaultQuestions();
     if(!appData.knowledgeBase) appData.knowledgeBase={};
     if(!appData.progress) appData.progress={};
-    renderNavTree();mainTab='home';renderView();
+    if(!appData.customCategories) appData.customCategories={};
+    renderNavTree();switchMainTab('home');
     const h=new Date().getHours();document.getElementById('greeting').innerText=(h<12?'☀️ 早上好':h<18?'🌤 下午好':'🌙 晚上好')+'，小鱼';
   }
   checkUser();
